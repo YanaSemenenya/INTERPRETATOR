@@ -60,3 +60,4 @@ target/
 \.idea/
 *.DS_Store
 *.csv
+models/.ipynb_checkpoints/
