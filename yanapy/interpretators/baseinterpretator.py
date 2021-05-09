@@ -29,23 +29,22 @@ class BaseInterpretator:
         """
         if self.__shap_explainer is None:
             raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
+        shap_values = self.__shap_explainer.shap_values(data)
 
         if type == 'summary_plot':
-            shap_values = self.__shap_explainer.shap_values(data)
             return shap.summary_plot(shap_values, data, max_display = num_features)
-        
-        if type == 'summary_bar_plot':
-            shap_values = self.__shap_explainer.shap_values(data)
+        elif type == 'summary_bar_plot':
             return shap.summary_plot(shap_values, data, plot_type='bar', max_display = num_features)
-        
-        if type == 'individual_plot':
+        elif type == 'individual_plot':
             shap.initjs()
-            shap_value_sample = self.__shap_explainer.shap_values(data)
-            return shap.force_plot(self.__shap_explainer.expected_value, shap_value_sample, data)
+            return shap.force_plot(self.__shap_explainer.expected_value, shap_values, data)
+        else:
+            raise BaseException('Unknow SHAP plot type')
         
     def fit_pdp(self, data, model_type = 'classification'):
         """
-        
+        :param data: Набор данных
+        :param model_type: Тип модели: 'classification' или 'regression'
         """
 
         if model_type == 'classification':
