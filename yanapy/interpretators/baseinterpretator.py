@@ -34,15 +34,20 @@ class BaseInterpretator:
     def shap(self, data, type = 'summary_plot', num_features = None):
         """
         Плейсхолдер для метода интепретации
+        :param type: Тип графика
         :param data: Данные, на которых построенна модель. Используются для отдельных видоп интепретации
         :return: Возвращает результат интепретации
         """
+        # Проверка параметров
         if self.__shap_explainer is None:
             raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
+
         if self.__algo == "random_forest":
             shap_values = self.__shap_explainer.shap_values(data)[1]
+            expected_value = self.__shap_explainer.expected_value[1]
         else:
             shap_values = self.__shap_explainer.shap_values(data)
+            expected_value = self.__shap_explainer.expected_value
 
         if type == 'summary_plot':
             return shap.summary_plot(shap_values, data, max_display = num_features)
@@ -50,7 +55,7 @@ class BaseInterpretator:
             return shap.summary_plot(shap_values, data, plot_type='bar', max_display = num_features)
         elif type == 'individual_plot':
             shap.initjs()
-            return shap.force_plot(self.__shap_explainer.expected_value, shap_values, data)
+            return shap.force_plot(expected_value, shap_values, data)
         else:
             raise BaseException('Unknown SHAP plot type')
         
