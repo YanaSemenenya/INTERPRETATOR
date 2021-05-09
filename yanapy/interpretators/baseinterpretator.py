@@ -7,15 +7,21 @@ class BaseInterpretator:
     Базовый класс интерпретатора
     """
 
-    def __init__(self, model):
+    def __init__(self, model, objective = 'classification'):
         """
         Создаёт объект интерпретатора
+        :type objective: Тип целевой переменной в модели. Допустимые значения: classification, regression
         :param model: Модель для интерпретации
         """
+        if objective not in ['classification', 'regression']:
+            raise BaseException('Unknown Objective')
+
         self.__model = model
         self.__shap_explainer = None
         self.__pdp_explainer = None
         self.__annotated_model = None
+
+        self.__objective = objective
     
     def fit_shap(self):
         self.__shap_explainer = shap.TreeExplainer(self.__model)
@@ -39,19 +45,17 @@ class BaseInterpretator:
             shap.initjs()
             return shap.force_plot(self.__shap_explainer.expected_value, shap_values, data)
         else:
-            raise BaseException('Unknow SHAP plot type')
+            raise BaseException('Unknown SHAP plot type')
         
-    def fit_pdp(self, data, model_type = 'classification'):
+    def fit_pdp(self, data):
         """
         :param data: Набор данных
-        :param model_type: Тип модели: 'classification' или 'regression'
         """
+        self.__pdp_explainer = Interpretation(data, feature_names=data.columns)
 
-        if model_type == 'classification':
-            self.__pdp_explainer = Interpretation(data, feature_names = data.columns)
+        if self.__objective == 'classification':
             self.__annotated_model = InMemoryModel(self.__model.predict_proba, examples=data)
-        elif model_type == 'regression':
-            self.__pdp_explainer = Interpretation(data, feature_names = data.columns)
+        elif self.__objective == 'regression':
             self.__annotated_model = InMemoryModel(self.__model.predict, examples=data)
         
     def pdp(self, features, grid_resolution = 30, n_samples=10000):
