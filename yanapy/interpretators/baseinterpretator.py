@@ -7,14 +7,17 @@ class BaseInterpretator:
     Базовый класс интерпретатора
     """
 
-    def __init__(self, model, objective = 'classification'):
+    def __init__(self, model, objective = 'classification', algorithm = 'boosting'):
         """
         Создаёт объект интерпретатора
+        :type algorithm: Алгоритм модели. Допустимые значения: boosting, random_forest
         :type objective: Тип целевой переменной в модели. Допустимые значения: classification, regression
         :param model: Модель для интерпретации
         """
         if objective not in ['classification', 'regression']:
             raise BaseException('Unknown Objective')
+        if algorithm not in ['boosting', 'random_forest']:
+            raise BaseException('Unknown algorithm')
 
         self.__model = model
         self.__shap_explainer = None
@@ -22,6 +25,7 @@ class BaseInterpretator:
         self.__annotated_model = None
 
         self.__objective = objective
+        self.__algo = algorithm
     
     def fit_shap(self):
         self.__shap_explainer = shap.TreeExplainer(self.__model)
@@ -35,7 +39,10 @@ class BaseInterpretator:
         """
         if self.__shap_explainer is None:
             raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
-        shap_values = self.__shap_explainer.shap_values(data)
+        if self.__algo == "random_forest":
+            shap_values = self.__shap_explainer.shap_values(data)[1]
+        else:
+            shap_values = self.__shap_explainer.shap_values(data)
 
         if type == 'summary_plot':
             return shap.summary_plot(shap_values, data, max_display = num_features)
