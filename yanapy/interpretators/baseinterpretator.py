@@ -48,14 +48,18 @@ class BaseInterpretator:
             self.interpreter = Interpretation(data, feature_names = data.columns)
             self.annotated_model = InMemoryModel(self.__model.predict, examples=data)
         
-    def pdp(self, features):
+    def pdp(self, features, grid_resolution = 30, n_samples=10000):
         """
-        :features: tuple из 1 или 2 фичей
+        Возврщает график PDP
+        :param features: tuple из 1 или 2 фичей
+        :param grid_resolution: Количество ячеек по каждой из осей
+        :param n_samples: ?количество сэмплов?
+        :return: Возвращает график PDP
         """
         pdp_features = [features]
         return self.interpreter.partial_dependence.plot_partial_dependence(pdp_features, 
                                                        self.annotated_model,
-                                                       grid_resolution=30,
-                                                       n_samples=10000,
+                                                       grid_resolution=grid_resolution,
+                                                       n_samples=n_samples,
                                                        n_jobs=-1)
         
