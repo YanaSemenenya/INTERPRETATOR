@@ -13,6 +13,7 @@ setup(
     zip_safe=False,
     test_suite='tests',
     install_requires=[
-        'numpy'
+        'shap',
+        'skater'
     ]
 )
