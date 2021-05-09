@@ -1,6 +1,9 @@
-import shap 
+import shap
+import numpy as np
+import matplotlib.pyplot as plt
 from skater.model import InMemoryModel
 from skater.core.explanations import Interpretation
+
 
 class BaseInterpretator:
     """
@@ -75,7 +78,7 @@ class BaseInterpretator:
         Возврщает график PDP
         :param features: tuple из 1 или 2 фичей
         :param grid_resolution: Количество ячеек по каждой из осей
-        :param n_samples: ?количество сэмплов?
+        :param n_samples: The number of samples to use from the original dataset
         :return: Возвращает график PDP
         """
 
@@ -90,3 +93,33 @@ class BaseInterpretator:
                                                        n_samples=n_samples,
                                                        n_jobs=-1)
         
+    def analyze_voters(self, obj, figsize=[10, 7]):
+        """
+        Проводит анализ голосвания деревьев в лесу
+        :param obj: Анализируемое наблюдение
+        :param figsize: Размер выходного графика
+        :return: Результаты голосования деревьев
+        """
+        if self.__algo != 'random_forest':
+            raise BaseException("Can be used only for Random Forest")
+
+        def get_voters(obj):
+            predicted_pobas = list()
+
+            for est in self.__model.estimators_:
+                probas = est.predict_proba(obj)
+                predicted_pobas.append([p[1] for p in probas][0])
+            return predicted_pobas
+
+
+        predicted_pobas = get_voters(obj)
+        mean_pred = np.mean(predicted_pobas)
+        std_pred = np.std(predicted_pobas)
+
+        fig = plt.figure(figsize=figsize)
+        plt.hlines(mean_pred, xmin=0, xmax=len(predicted_pobas), label='mean prediction')
+        bar_char = plt.bar(x=list(range(len(predicted_pobas))), height=predicted_pobas)
+        cum_vote = plt.plot(sorted(predicted_pobas), c='red', label='cum votes')
+        plt.legend()
+
+        return predicted_pobas, bar_char, cum_vote
