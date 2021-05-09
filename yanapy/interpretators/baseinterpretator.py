@@ -69,7 +69,7 @@ class BaseInterpretator:
 
         pdp_features = [features]
 
-        return self.interpreter.partial_dependence.plot_partial_dependence(pdp_features, 
+        return self.__pdp_explainer.partial_dependence.plot_partial_dependence(pdp_features,
                                                        self.__annotated_model,
                                                        grid_resolution=grid_resolution,
                                                        n_samples=n_samples,
