@@ -1,4 +1,6 @@
 import shap 
+from skater.model import InMemoryModel
+from skater.core.explanations import Interpretation
 
 class BaseInterpretator:
     """
@@ -34,3 +36,26 @@ class BaseInterpretator:
             shap.initjs()
             shap_value_sample = self.__explainer.shap_values(data)
             return shap.force_plot(self.__explainer.expected_value, shap_value_sample, data)
+        
+    def fit_pdp(self, data, model_type = 'classification'):
+        """
+        
+        """
+        if model_type == 'classification':
+            self.interpreter = Interpretation(data, feature_names = data.columns)
+            self.annotated_model = InMemoryModel(self.__model.predict_proba, examples=data)
+        elif model_type == 'regression':
+            self.interpreter = Interpretation(data, feature_names = data.columns)
+            self.annotated_model = InMemoryModel(self.__model.predict, examples=data)
+        
+    def pdp(self, features):
+        """
+        :features: tuple из 1 или 2 фичей
+        """
+        pdp_features = [features]
+        return self.interpreter.partial_dependence.plot_partial_dependence(pdp_features, 
+                                                       self.annotated_model,
+                                                       grid_resolution=30,
+                                                       n_samples=10000,
+                                                       n_jobs=-1)
+        
