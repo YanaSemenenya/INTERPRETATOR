@@ -3,7 +3,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 from skater.model import InMemoryModel
 from skater.core.explanations import Interpretation
-
+from skater.core.local_interpretation.lime.lime_tabular import LimeTabularExplainer
+from skater.util.dataops import show_in_notebook
+import types
+import seaborn as sns
+import pandas as pd
 
 class BaseInterpretator:
     """
@@ -24,7 +28,7 @@ class BaseInterpretator:
 
         self.__model = model
         self.__shap_explainer = None
-        self.__pdp_explainer = None
+        self.__skater_explainer = None
         self.__annotated_model = None
 
         self.__objective = objective
@@ -62,11 +66,11 @@ class BaseInterpretator:
         else:
             raise BaseException('Unknown SHAP plot type')
         
-    def fit_pdp(self, data):
+    def fit_skater(self, data):
         """
         :param data: Набор данных
         """
-        self.__pdp_explainer = Interpretation(data, feature_names=data.columns)
+        self.__skater_explainer = Interpretation(data, feature_names=data.columns)
 
         if self.__objective == 'classification':
             self.__annotated_model = InMemoryModel(self.__model.predict_proba, examples=data)
@@ -82,12 +86,12 @@ class BaseInterpretator:
         :return: Возвращает график PDP
         """
 
-        if self.__pdp_explainer is None or self.__annotated_model is None:
-            raise BaseException("PDP explainer is not fitted. Run fit_pdp at first")
+        if self.__skater_explainer is None or self.__annotated_model is None:
+            raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
 
         pdp_features = [features]
 
-        return self.__pdp_explainer.partial_dependence.plot_partial_dependence(pdp_features,
+        return self.__skater_explainer.partial_dependence.plot_partial_dependence(pdp_features,
                                                        self.__annotated_model,
                                                        grid_resolution=grid_resolution,
                                                        n_samples=n_samples,
@@ -123,3 +127,81 @@ class BaseInterpretator:
         plt.legend()
 
         return predicted_pobas, bar_char, cum_vote
+    
+    def get_decision_rules(self, X_train, y_train, filename):
+        """
+        ВАЖНО! Работает только для обучающей выборки
+        :X_train: DataFrame, 
+        :y_train: Series or numpy array, вектор таргетов
+        """
+        
+        surrogate_explainer = self.__skater_explainer.tree_surrogate(oracle=self.__annotated_model, seed=33)
+        f1 = surrogate_explainer.fit(X_train, y_train, use_oracle=True, prune='pre', scorer_type='f1')
+        print('F1 score for the surrogate tree: ', f1)
+
+        def plot_tree_new(self, features_names, colors=None, 
+                                         enable_node_id=True, random_state=0, 
+                                         file_name=filename,
+                                          show_img=False, fig_size=(20, 8)):
+            """ Visualizes the decision policies of the surrogate tree.
+            """
+            self.feature_names = features_names
+            graph_inst = plot_tree(self.__model, self.__mfodel_type, feature_names=self.feature_names, color_list=colors,
+                                       class_names=self.class_names, enable_node_id=enable_node_id, seed=random_state)
+            f_name = "interpretable_tree.png" if file_name is None else file_name
+            graph_inst.write_png(f_name)
+
+            try:
+                import matplotlib
+                matplotlib.use('agg')
+                import matplotlib.pyplot as plt
+            except ImportError:
+                raise exceptions.MatplotlibUnavailableError("Matplotlib is required but unavailable on the system.")
+            except RuntimeError:
+                raise exceptions.MatplotlibDisplayError("Matplotlib unable to open display")
+
+            if show_img:
+                plt.rcParams["figure.figsize"] = fig_size
+                img = plt.imread(f_name)
+                if self.__model_type == 'regressor':
+                    cax = plt.imshow(img, cmap=plt.cm.get_cmap(graph_inst.get_colorscheme()))
+                    plt.colorbar(cax)
+                else:
+                    plt.imshow(img)
+            return graph_inst
+        
+        
+        surrogate_explainer.plot_tree = types.MethodType(plot_tree_new, surrogate_explainer)
+        surrogate_explainer.plot_tree(X_train.columns)
+        
+        show_in_notebook(filename, width=1200, height=800);
+    
+    def lime(self, data, index_examples, class_names = None):
+        """
+        Важно! Для LIME модель должна быть обучена на numpy array
+        :data: DataFrame, датасет с исходными данными
+        :class_names: имена классов 
+        :index_example: list, номер индекса объекта, который хотим интерпретировать
+        """
+        #принимает в качестве данных только numpy array
+        exp = LimeTabularExplainer(data.values, feature_names=data.columns, discretize_continuous=True, 
+                           class_names=class_names)
+        if not isinstance(index_examples, list):
+            raise BaseException("index_examples must be list")
+        for i in index_examples:
+            predictions = self.__model.predict_proba(data.values)
+            print('Predicted:', predictions[i])
+            exp.explain_instance(X_train.iloc[i].values, self.__model.predict_proba).show_in_notebook()
+            
+    def plot_feature_importances(self, column_list, plot_size = (14,5)):
+        """
+        круто бы чекнуть если ли у модели метод feature_importnaces
+        """
+        featimp_df = pd.DataFrame(data={"feature_name": column_list, 
+                                          'feature_importance': self.__model.feature_importances_})
+        sns.barplot(data=featimp_df.sort_values(by=['feature_importance'], ascending = False),
+                   x='feature_importance', y='feature_name')
+        plt.gcf().set_size_inches(plot_size)
+        plt.tight_layout()
+        plt.show()
+
