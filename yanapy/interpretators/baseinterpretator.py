@@ -147,7 +147,7 @@ class BaseInterpretator:
 
         from graphviz import Source
         from IPython.display import SVG
-        surrogate_explainer.feature_names = X.columns
+        surrogate_explainer.feature_names = X_train.columns
 
         graph = Source(surrogate_explainer.plot_global_decisions(colors=['coral', 'darkturquoise'],
                                                                  file_name='test_tree_pre.png').to_string())
