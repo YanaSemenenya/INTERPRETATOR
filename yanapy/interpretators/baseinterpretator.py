@@ -129,10 +129,10 @@ class BaseInterpretator:
 
         return predicted_pobas, bar_char, cum_vote
 
-    def get_decision_rules(self, X_train, y_train, filename=None):
+    def get_decision_rules(self, X_train, y_train, file_name=None):
         """
         ВАЖНО! Работает только для обучающей выборки
-        :X_train: DataFrame, 
+        :X_train: DataFrame,
         :y_train: Series or numpy array, вектор таргетов
         """
 
@@ -143,42 +143,25 @@ class BaseInterpretator:
         f1 = surrogate_explainer.fit(X_train, y_train, use_oracle=True, prune='pre', scorer_type='f1')
         print('F1 score for the surrogate tree: ', f1)
 
-        def plot_tree_new(self, features_names, colors=None,
-                          enable_node_id=True, random_state=0,
-                          file_name=filename,
-                          show_img=False, fig_size=(20, 8)):
-            """ Visualizes the decision policies of the surrogate tree.
-            """
-            self.feature_names = features_names
-            graph_inst = self.plot_tree(self.__model, self.__mfodel_type, feature_names=self.feature_names,
-                                   color_list=colors,
-                                   class_names=self.class_names, enable_node_id=enable_node_id, seed=random_state)
-            f_name = "interpretable_tree.png" if file_name is None else file_name
-            graph_inst.write_png(f_name)
+        # return surrogate_explainer
 
-            try:
-                import matplotlib
-                matplotlib.use('agg')
-                import matplotlib.pyplot as plt
-            except ImportError:
-                raise exceptions.MatplotlibUnavailableError("Matplotlib is required but unavailable on the system.")
-            except RuntimeError:
-                raise exceptions.MatplotlibDisplayError("Matplotlib unable to open display")
+        from graphviz import Source
+        from IPython.display import SVG
+        surrogate_explainer.feature_names = X.columns
 
-            if show_img:
-                plt.rcParams["figure.figsize"] = fig_size
-                img = plt.imread(f_name)
-                if self.__model_type == 'regressor':
-                    cax = plt.imshow(img, cmap=plt.cm.get_cmap(graph_inst.get_colorscheme()))
-                    plt.colorbar(cax)
-                else:
-                    plt.imshow(img)
-            return graph_inst
+        graph = Source(surrogate_explainer.plot_global_decisions(colors=['coral', 'darkturquoise'],
+                                                                 file_name='test_tree_pre.png').to_string())
+        if file_name is None:
+            file_name = 'surrogate_tree.svg'
+        else:
+            file_name = file_name + '.svg'
 
-        surrogate_explainer.plot_tree = types.MethodType(plot_tree_new, surrogate_explainer)
-        surrogate_explainer.plot_tree(X_train.columns)
+        svg_data = graph.pipe(format='svg')
+        with open(file_name, 'wb') as f:
+            f.write(svg_data)
+        SVG(svg_data)
 
-        show_in_notebook(filename, width=1200, height=800);
+        return graph
 
     def lime(self, data, index_examples, class_names=None):
         """
