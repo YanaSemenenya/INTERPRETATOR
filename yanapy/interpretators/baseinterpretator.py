@@ -129,12 +129,15 @@ class BaseInterpretator:
 
         return predicted_pobas, bar_char, cum_vote
 
-    def get_decision_rules(self, X_train, y_train, filename):
+    def get_decision_rules(self, X_train, y_train, filename=None):
         """
         ВАЖНО! Работает только для обучающей выборки
         :X_train: DataFrame, 
         :y_train: Series or numpy array, вектор таргетов
         """
+
+        if self.__skater_explainer is None or self.__annotated_model is None:
+            raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
 
         surrogate_explainer = self.__skater_explainer.tree_surrogate(oracle=self.__annotated_model, seed=33)
         f1 = surrogate_explainer.fit(X_train, y_train, use_oracle=True, prune='pre', scorer_type='f1')
@@ -147,7 +150,7 @@ class BaseInterpretator:
             """ Visualizes the decision policies of the surrogate tree.
             """
             self.feature_names = features_names
-            graph_inst = plot_tree(self.__model, self.__mfodel_type, feature_names=self.feature_names,
+            graph_inst = self.plot_tree(self.__model, self.__mfodel_type, feature_names=self.feature_names,
                                    color_list=colors,
                                    class_names=self.class_names, enable_node_id=enable_node_id, seed=random_state)
             f_name = "interpretable_tree.png" if file_name is None else file_name
