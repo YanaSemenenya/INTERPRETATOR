@@ -177,6 +177,10 @@ class BaseInterpretator:
                                    class_names=class_names)
         if not isinstance(index_examples, list):
             raise BaseException("index_examples must be list")
+        if self.__objective != "classification":
+            raise BaseException("Not implemented for not classification tasks")
+
+
         for i in index_examples:
             if self.__objective == "regression":
                 predictions = self.__model.predict(data.values)
