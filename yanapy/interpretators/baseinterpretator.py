@@ -141,8 +141,9 @@ class BaseInterpretator:
             raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
 
         surrogate_explainer = self.__skater_explainer.tree_surrogate(oracle=self.__annotated_model, seed=33)
-        f1 = surrogate_explainer.fit(X_train, y_train, use_oracle=True, prune='pre', scorer_type='f1')
-        print('F1 score for the surrogate tree: ', f1)
+
+        impurity_score = surrogate_explainer.fit(X_train, y_train, use_oracle=True, prune='pre')
+        print("Impurity score (Difference between original model's and surrogate tree's scores: ", impurity_score)
 
         # return surrogate_explainer
 
