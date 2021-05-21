@@ -35,6 +35,7 @@ class BaseInterpretator:
 
         self.__objective = objective
         self.__algo = algorithm
+        self.__target_class_index = 1
 
     def fit_shap(self):
         self.__shap_explainer = shap.TreeExplainer(self.__model)
@@ -51,12 +52,12 @@ class BaseInterpretator:
         if self.__shap_explainer is None:
             raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
 
-        if self.__algo == "random_forest":
-            shap_values = self.__shap_explainer.shap_values(data)[1]
-            expected_value = self.__shap_explainer.expected_value[1]
-        else:
-            shap_values = self.__shap_explainer.shap_values(data)
-            expected_value = self.__shap_explainer.expected_value
+        # тут диалим с разницей между моделями xgb / LGBM+rf
+        shap_values = self.__shap_explainer.shap_values(data)
+        expected_value = self.__shap_explainer.expected_value
+        if isinstance(shap_values, list):
+            shap_values = shap_values[self.__target_class_index]
+            expected_value = expected_value[self.__target_class_index]
 
         if type == 'summary_plot':
             return shap.summary_plot(shap_values, data, max_display=num_features)
