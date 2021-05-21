@@ -178,9 +178,14 @@ class BaseInterpretator:
         if not isinstance(index_examples, list):
             raise BaseException("index_examples must be list")
         for i in index_examples:
-            predictions = self.__model.predict_proba(data.values)
-            print('Predicted:', predictions[i])
-            exp.explain_instance(data.iloc[i].values, self.__model.predict_proba).show_in_notebook()
+            if self.__objective == "regression":
+                predictions = self.__model.predict(data.values)
+                print('Predicted:', predictions[i])
+                exp.explain_instance(data.iloc[i].values, self.__model.predict).show_in_notebook()
+            elif self.__objective == "classification":
+                predictions = self.__model.predict_proba(data.values)
+                print('Predicted:', predictions[i])
+                exp.explain_instance(data.iloc[i].values, self.__model.predict_proba).show_in_notebook()
 
     def plot_feature_importances(self, column_list, plot_size=(14, 5)):
         """
