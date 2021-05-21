@@ -141,8 +141,9 @@ class BaseInterpretator:
             raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
 
         surrogate_explainer = self.__skater_explainer.tree_surrogate(oracle=self.__annotated_model, seed=33)
-        f1 = surrogate_explainer.fit(X_train, y_train, use_oracle=True, prune='pre', scorer_type='f1')
-        print('F1 score for the surrogate tree: ', f1)
+
+        impurity_score = surrogate_explainer.fit(X_train, y_train, use_oracle=True, prune='pre')
+        print("Impurity score (Difference between original model's and surrogate tree's scores: ", impurity_score)
 
         # return surrogate_explainer
 
@@ -176,10 +177,19 @@ class BaseInterpretator:
                                    class_names=class_names)
         if not isinstance(index_examples, list):
             raise BaseException("index_examples must be list")
+        if self.__objective != "classification":
+            raise BaseException("Not implemented for not classification tasks")
+
+
         for i in index_examples:
-            predictions = self.__model.predict_proba(data.values)
-            print('Predicted:', predictions[i])
-            exp.explain_instance(data.iloc[i].values, self.__model.predict_proba).show_in_notebook()
+            if self.__objective == "regression":
+                predictions = self.__model.predict(data.values)
+                print('Predicted:', predictions[i])
+                exp.explain_instance(data.iloc[i].values, self.__model.predict).show_in_notebook()
+            elif self.__objective == "classification":
+                predictions = self.__model.predict_proba(data.values)
+                print('Predicted:', predictions[i])
+                exp.explain_instance(data.iloc[i].values, self.__model.predict_proba).show_in_notebook()
 
     def plot_feature_importances(self, column_list, plot_size=(14, 5)):
         """
