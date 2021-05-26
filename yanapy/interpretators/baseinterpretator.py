@@ -37,10 +37,30 @@ class BaseInterpretator:
         self.__algo = algorithm
         self.__target_class_index = 1
 
+    # region Wrappers here
+    def requires_shap(self, func):
+        def wrapper(*args, **kwargs):
+            # Проверка параметров
+            if self.__shap_explainer is None:
+                raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
+            func(*args, **kwargs)
+        return wrapper
+
+    def requires_skater(self, func):
+        def wrapper(*args, **kwargs):
+            # Проверка параметров
+            if self.__skater_explainer is None or self.__annotated_model is None:
+                raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
+            func(*args, **kwargs)
+        return wrapper
+
+    # endregion
+
     def fit_shap(self):
         self.__shap_explainer = shap.TreeExplainer(self.__model)
         return
 
+    @requires_shap
     def shap(self, data, type='summary_plot', num_features=None):
         """
         Плейсхолдер для метода интепретации
@@ -48,9 +68,6 @@ class BaseInterpretator:
         :param data: Данные, на которых построенна модель. Используются для отдельных видоп интепретации
         :return: Возвращает результат интепретации
         """
-        # Проверка параметров
-        if self.__shap_explainer is None:
-            raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
 
         # тут диалим с разницей между моделями xgb / LGBM+rf
         shap_values = self.__shap_explainer.shap_values(data)
@@ -80,6 +97,7 @@ class BaseInterpretator:
         elif self.__objective == 'regression':
             self.__annotated_model = InMemoryModel(self.__model.predict, examples=data)
 
+    @requires_skater
     def pdp(self, features, grid_resolution=30, n_samples=10000):
         """
         Возврщает график PDP
@@ -88,9 +106,6 @@ class BaseInterpretator:
         :param n_samples: The number of samples to use from the original dataset
         :return: Возвращает график PDP
         """
-
-        if self.__skater_explainer is None or self.__annotated_model is None:
-            raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
 
         pdp_features = [features]
 
@@ -130,15 +145,13 @@ class BaseInterpretator:
 
         return predicted_pobas, bar_char, cum_vote
 
+    @requires_skater
     def get_decision_rules(self, X_train, y_train, file_name=None):
         """
         ВАЖНО! Работает только для обучающей выборки
         :X_train: DataFrame,
         :y_train: Series or numpy array, вектор таргетов
         """
-
-        if self.__skater_explainer is None or self.__annotated_model is None:
-            raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
 
         surrogate_explainer = self.__skater_explainer.tree_surrogate(oracle=self.__annotated_model, seed=33)
 
