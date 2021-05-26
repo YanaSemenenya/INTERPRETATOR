@@ -54,6 +54,13 @@ class BaseInterpretator:
             func(*args, **kwargs)
         return wrapper
 
+    def rf_only(self, func):
+        def wrapper(*args, **kwargs):
+            if self.__algo != 'random_forest':
+                raise BaseException("Can be used only for Random Forest")
+            func(*args, **kwargs)
+        return wrapper
+
     # endregion
 
     def fit_shap(self):
@@ -114,7 +121,7 @@ class BaseInterpretator:
                                                                                   grid_resolution=grid_resolution,
                                                                                   n_samples=n_samples,
                                                                                   n_jobs=-1)
-
+    @rf_only
     def analyze_voters(self, obj, figsize=[10, 7]):
         """
         Проводит анализ голосвания деревьев в лесу
