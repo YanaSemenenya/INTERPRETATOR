@@ -9,6 +9,7 @@ from skater.util import exceptions
 import types
 import seaborn as sns
 import pandas as pd
+import functools
 from ..interpretators.__wrappers import *
 
 
@@ -37,6 +38,39 @@ class BaseInterpretator:
         self.__objective = objective
         self.__algo = algorithm
         self.__target_class_index = 1
+
+    #region Декораторы
+    def requires_shap(func):
+        functools.wraps(func)
+
+        def wrapper(self, *func_args, **func_kwargs):
+            # Проверка параметров
+            if self.__shap_explainer is None:
+                raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
+            func(self, *func_args, **func_kwargs)
+
+        return wrapper
+
+    def requires_skater(func):
+        functools.wraps(func)
+
+        def wrapper(self, *func_args, **func_kwargs):
+            # Проверка параметров
+            if self.__skater_explainer is None or self.__annotated_model is None:
+                raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
+            func(self, *func_args, **func_kwargs)
+
+        return wrapper
+
+    def rf_only(func):
+        def wrapper(self, *func_args, **func_kwargs):
+            if self.__algo != 'random_forest':
+                raise BaseException("Can be used only for Random Forest")
+            func(self, *func_args, **func_kwargs)
+
+        return wrapper
+    #endregion
+
 
     def fit_shap(self):
         self.__shap_explainer = shap.TreeExplainer(self.__model)
