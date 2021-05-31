@@ -9,6 +9,8 @@ from skater.util import exceptions
 import types
 import seaborn as sns
 import pandas as pd
+import functools
+from ..interpretators.__wrappers import *
 
 
 class BaseInterpretator:
@@ -37,10 +39,44 @@ class BaseInterpretator:
         self.__algo = algorithm
         self.__target_class_index = 1
 
+    #region Декораторы
+    def requires_shap(func):
+        functools.wraps(func)
+
+        def wrapper(self, *func_args, **func_kwargs):
+            # Проверка параметров
+            if self.__shap_explainer is None:
+                raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
+            func(self, *func_args, **func_kwargs)
+
+        return wrapper
+
+    def requires_skater(func):
+        functools.wraps(func)
+
+        def wrapper(self, *func_args, **func_kwargs):
+            # Проверка параметров
+            if self.__skater_explainer is None or self.__annotated_model is None:
+                raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
+            func(self, *func_args, **func_kwargs)
+
+        return wrapper
+
+    def rf_only(func):
+        def wrapper(self, *func_args, **func_kwargs):
+            if self.__algo != 'random_forest':
+                raise BaseException("Can be used only for Random Forest")
+            func(self, *func_args, **func_kwargs)
+
+        return wrapper
+    #endregion
+
+
     def fit_shap(self):
         self.__shap_explainer = shap.TreeExplainer(self.__model)
         return
 
+    @requires_shap
     def shap(self, data, type='summary_plot', num_features=None):
         """
         Плейсхолдер для метода интепретации
@@ -48,9 +84,6 @@ class BaseInterpretator:
         :param data: Данные, на которых построенна модель. Используются для отдельных видоп интепретации
         :return: Возвращает результат интепретации
         """
-        # Проверка параметров
-        if self.__shap_explainer is None:
-            raise BaseException("SHAP explainer is not fitted. Run fit_shap at first")
 
         # тут диалим с разницей между моделями xgb / LGBM+rf
         shap_values = self.__shap_explainer.shap_values(data)
@@ -80,6 +113,7 @@ class BaseInterpretator:
         elif self.__objective == 'regression':
             self.__annotated_model = InMemoryModel(self.__model.predict, examples=data)
 
+    @requires_skater
     def pdp(self, features, grid_resolution=30, n_samples=10000):
         """
         Возврщает график PDP
@@ -89,9 +123,6 @@ class BaseInterpretator:
         :return: Возвращает график PDP
         """
 
-        if self.__skater_explainer is None or self.__annotated_model is None:
-            raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
-
         pdp_features = [features]
 
         return self.__skater_explainer.partial_dependence.plot_partial_dependence(pdp_features,
@@ -99,7 +130,7 @@ class BaseInterpretator:
                                                                                   grid_resolution=grid_resolution,
                                                                                   n_samples=n_samples,
                                                                                   n_jobs=-1)
-
+    @rf_only
     def analyze_voters(self, obj, figsize=[10, 7]):
         """
         Проводит анализ голосвания деревьев в лесу
@@ -130,15 +161,13 @@ class BaseInterpretator:
 
         return predicted_pobas, bar_char, cum_vote
 
+    @requires_skater
     def get_decision_rules(self, X_train, y_train, file_name=None):
         """
         ВАЖНО! Работает только для обучающей выборки
         :X_train: DataFrame,
         :y_train: Series or numpy array, вектор таргетов
         """
-
-        if self.__skater_explainer is None or self.__annotated_model is None:
-            raise BaseException("Skater explainer is not fitted. Run fit_skater at first")
 
         surrogate_explainer = self.__skater_explainer.tree_surrogate(oracle=self.__annotated_model, seed=33)
 
