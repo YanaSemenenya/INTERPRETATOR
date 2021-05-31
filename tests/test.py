@@ -21,4 +21,4 @@ bi.fit_shap()
 bi.fit_skater(X)
 
 
-bi.shap(X)
+bi.shap_individual(X, type="waterfall", obj_ind=0)
