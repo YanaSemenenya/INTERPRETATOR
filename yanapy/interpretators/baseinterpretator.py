@@ -39,7 +39,7 @@ class BaseInterpretator:
         self.__algo = algorithm
         self.__target_class_index = 1
 
-    #region Декораторы
+    # region Декораторы
     def requires_shap(func):
         functools.wraps(func)
 
@@ -69,8 +69,7 @@ class BaseInterpretator:
             func(self, *func_args, **func_kwargs)
 
         return wrapper
-    #endregion
-
+    # endregion
 
     def fit_shap(self):
         self.__shap_explainer = shap.TreeExplainer(self.__model)
@@ -81,7 +80,7 @@ class BaseInterpretator:
         """
         Плейсхолдер для метода интепретации
         :param type: Тип графика
-        :param data: Данные, на которых построенна модель. Используются для отдельных видоп интепретации
+        :param data: Данные, на которых построенна модель. Используются для отдельных видов интепретации
         :return: Возвращает результат интепретации
         """
 
@@ -102,6 +101,28 @@ class BaseInterpretator:
         else:
             raise BaseException('Unknown SHAP plot type')
 
+    @requires_shap
+    def shap_individual(self, data, type="waterfall", obj_ind=0, num_features=10):
+        """
+        Индивидуальный график по принятому решению
+        :param data: Данные
+        :param type: Тип графика: waterfall,
+        :param obj_ind: Индекс объекта в выборке
+        :param num_features: Число фичей для вывода
+        :return: Индивидуальный график
+        """
+        shap_values = self.__shap_explainer.shap_values(data)
+        expected_value = self.__shap_explainer.expected_value
+        if isinstance(shap_values, list):
+            shap_values = shap_values[self.__target_class_index]
+            expected_value = expected_value[self.__target_class_index]
+        if type == 'waterfall':
+            # Используем легаси метод, потому что есть баг в шапе - см issue 1420 репозитория шапа
+            return shap.plots._waterfall.waterfall_legacy(expected_value, shap_values[obj_ind])
+            # return shap.waterfall_plot(shap_values[obj_ind], max_display=num_features)
+        else:
+            raise BaseException('Unknown SHAP plot type')
+
     def fit_skater(self, data):
         """
         :param data: Набор данных
@@ -116,7 +137,7 @@ class BaseInterpretator:
     @requires_skater
     def pdp(self, features, grid_resolution=30, n_samples=10000):
         """
-        Возврщает график PDP
+        Возвращает график PDP
         :param features: tuple из 1 или 2 фичей
         :param grid_resolution: Количество ячеек по каждой из осей
         :param n_samples: The number of samples to use from the original dataset
@@ -124,12 +145,12 @@ class BaseInterpretator:
         """
 
         pdp_features = [features]
-
         return self.__skater_explainer.partial_dependence.plot_partial_dependence(pdp_features,
                                                                                   self.__annotated_model,
                                                                                   grid_resolution=grid_resolution,
                                                                                   n_samples=n_samples,
                                                                                   n_jobs=-1)
+
     @rf_only
     def analyze_voters(self, obj, figsize=[10, 7]):
         """
@@ -208,7 +229,6 @@ class BaseInterpretator:
             raise BaseException("index_examples must be list")
         if self.__objective != "classification":
             raise BaseException("Not implemented for not classification tasks")
-
 
         for i in index_examples:
             if self.__objective == "regression":
